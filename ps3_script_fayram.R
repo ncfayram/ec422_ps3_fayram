@@ -75,9 +75,16 @@ can_gas_q <- can_gas |>
 head(can_gas_q)
 
 can_gas_q |> autoplot(Volume)
-# If we were to average the data by month as opposed to summing it, 
-# the proportion of the the seasonal swings relative to one another would be altered. 
-# By summing them, we maintain the true cumulative seasonal swing.
-# Even at a lower frequency the data still appears to be seasonal.
+# If we were to average the data by month as opposed to summing it, the proportion of the the seasonal swings relative to one another would be altered. By summing them, we maintain the true cumulative seasonal swing. Even at a lower frequency the data still appears to be seasonal.
+
+# Back to US retail sales
+retail_ts |> autoplot(sales) +
+  labs(
+    title = "U.S. Retail and Food Services Sales",
+    subtitle = "Seasonally adjusted vs. not seasonally adjusted",
+    x = NULL, y = "Millions of dollars", color = NULL
+  ) +
+  theme_minimal()
+# RSAFSNA displays a high peak and a sharp drop right at the start of Q1 each year. This seasonal cycle is absent in the RSAFS data, however the RSAFS data precisely follows the overall trend seen in RSAFSNA.
 
 

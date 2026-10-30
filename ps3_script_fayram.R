@@ -87,4 +87,13 @@ retail_ts |> autoplot(sales) +
   theme_minimal()
 # RSAFSNA displays a high peak and a sharp drop right at the start of Q1 each year. This seasonal cycle is absent in the RSAFS data, however the RSAFS data precisely follows the overall trend seen in RSAFSNA.
 
+can_gas |> autoplot(Volume) +
+  labs(
+    title = "Canadian Gasoline Production",
+    x = "Date", y = "Billions of Meters^3", color = NULL
+  ) +
+  geom_smooth() +
+  theme_minimal()
+# I added geom_smooth() to the plot to show the overall trend of the data. The amplitude of the seasonal swings varies greatly over the time series and can get difficult to distinguish toward the end. The smooth line clarifies the overall trend of the data for the reader.
+
 

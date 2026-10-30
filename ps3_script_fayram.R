@@ -45,4 +45,39 @@ has_gaps(can_gas)
 head(can_gas)
 # No gaps in the data!
 
+# 1990 on
+can_gas_recent <- can_gas |>
+  filter(Month >= yearmonth("1990 Jan"))
+
+head(can_gas_recent)
+
+can_gas_recent <- can_gas_recent |>
+  mutate(year    = year(Month),
+         month   = month(Month, label = TRUE),
+         quarter = quarter(Month))
+
+# Average monthly volume of gas sold in Canada
+can_gas_recent |>
+  as_tibble() |>
+  group_by(month) |>
+  summarize(avg_volume = mean(Volume))
+
+can_gas_recent |>
+  mutate(next_month           = Month + 1,
+         same_month_last_year = Month - 12) |>
+  head()
+
+can_gas_q <- can_gas |>
+  filter(Month <= yearmonth("2004 Dec")) |>
+  index_by(Quarter = yearquarter(Month)) |>
+  summarize(Volume = sum(Volume))
+
+head(can_gas_q)
+
+can_gas_q |> autoplot(Volume)
+# If we were to average the data by month as opposed to summing it, 
+# the proportion of the the seasonal swings relative to one another would be altered. 
+# By summing them, we maintain the true cumulative seasonal swing.
+# Even at a lower frequency the data still appears to be seasonal.
+
 

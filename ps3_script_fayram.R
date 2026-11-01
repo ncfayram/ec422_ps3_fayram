@@ -98,10 +98,10 @@ can_gas |> autoplot(Volume) +
 
 # 3.1a The seasonal swings of the series initially appear to be growing over time, but after about 1988 the swings begin to diminish in amplitude.
 # Log
-log_volume <- can_gas |>
+can_gas <- can_gas |>
   mutate(log_volume = log(Volume))
 
-log_volume |> ggplot(aes(x = Month, y = log_volume)) +
+can_gas |> ggplot(aes(x = Month, y = log_volume)) +
   geom_line() +
   labs(
     title = "Canadian Gasoline Production",
@@ -125,3 +125,48 @@ log_sales |> ggplot(aes(x = Month, y = log_sales)) +
   ) +
   theme_minimal()
 # Logging this function has succeeded in stabilizing the variance of the seasonal swings over time. I believe this series has a stronger case for a log transformation than the Canadian Gas dataset because the seasonal swing variance grows more consistently with the level over time rather than beginning to shrink again after a while as seen in the gasoline series.
+
+# Growth Rates
+log_volume <- can_gas |>
+  mutate(
+    growth_direct = 100 * difference(Volume) / lag(Volume),
+    growth_logdiff = 100 * difference(log_volume)
+  )
+
+log_volume |> autoplot(growth_direct) +
+  labs(
+    title = "Canadian Gasoline Production Growth Rates",
+    x = "Date", y = "Billions of Cubic Meters per Year", color = NULL
+  ) +
+  theme_minimal()
+
+growth_direct <- 100 * difference(Volume) / lag(Volume)
+growth_logdiff <- 100 * difference(log_volume)
+
+can_gas <- log_volume |>
+  mutate(growth_gap = abs(growth_direct - growth_logdiff))
+
+can_gas |> autoplot(growth_gap) +
+  labs(
+    title = "Canadian Gasoline Production Growth Rate Differences",
+    x = "Date", y = "Billions of Cubic Meters per Year", color = NULL
+  ) +
+  theme_minimal()
+# The log difference estimation is pretty good for the mos part, but every couple of years, the gap between the two methods spikes up to several billions of cubic meters per year. Although the majority of the data is similar, these big gaps imply that the log approximation isn't consistently reliable for this data set.
+
+#SA NSA Growth Rates
+retail_ts <- retail_ts |>
+  group_by_key() |>
+  mutate(growth_mom = 100 * difference(log(sales))) |>
+  ungroup()
+
+retail_ts |>
+  autoplot(growth_mom) +
+  labs(
+    title = "Month-over-Month Growth: SA vs. NSA Retail Sales",
+    x = NULL, y = "Growth rate (%)", color = NULL
+  ) +
+  theme_minimal()
+
+#The not seasonally adjusted series has significantly more variance and noise in its month-over-month growth rate. This is because those growth rates are greatly exacerbated by the seasonal swings so the the RSAFSNA picks that up, whereas the RSAFS series only accounts for the additional changes in growth rates by less influential factors. For this reason, the two series follow the same trend, but the spikes in the RSAFSNA data are much more pronounced.
+

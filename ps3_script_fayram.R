@@ -286,3 +286,14 @@ errs <- gas_cv_fc |>
 
 forecast::dm.test(errs$snaive, errs$tslm, h = 1, power = 1)
 # The DM test statistic is -31.278 with a p-value of <2.2e-16. Therefore at the 5% significance level, we reject the null hypothesis of homoskedasticity and conclude that the snaive model is significantly more accurate than the tslm model for this data.
+# Expanding window
+gas_cv_fc_roll<- can_gas |>
+  select(Month, Volume) |>
+  slide_tsibble(.size = 240, .step = 1) |>
+  model(snaive = SNAIVE(Volume),
+        tslm   = TSLM(log(Volume) ~ trend() + season())) |>
+  forecast(h = 1)
+
+gas_cv_fc_roll |>
+  accuracy(can_gas, measures = list(MAE = MAE, RMSE = RMSE))
+# The MAE of the snaive model is 0.562 and the RMSE is 0.702. The MAE of the tslm model is 2.09 and the RMSE is 2.42. This snaive model is still a better fit for the data with a rolling window, but the tslm model metrics changed significantly more than the snaive model moving from an expanding window to a rolling one. This makes sense because the model only takes the most recent 240 months of data into account, meaning it's more flexible and adaptable to changing growth rates allowing it to fit the series better.

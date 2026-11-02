@@ -297,3 +297,4 @@ gas_cv_fc_roll<- can_gas |>
 gas_cv_fc_roll |>
   accuracy(can_gas, measures = list(MAE = MAE, RMSE = RMSE))
 # The MAE of the snaive model is 0.562 and the RMSE is 0.702. The MAE of the tslm model is 2.09 and the RMSE is 2.42. This snaive model is still a better fit for the data with a rolling window, but the tslm model metrics changed significantly more than the snaive model moving from an expanding window to a rolling one. This makes sense because the model only takes the most recent 240 months of data into account, meaning it's more flexible and adaptable to changing growth rates allowing it to fit the series better.
+# All loaded into the quarto doc

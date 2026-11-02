@@ -262,3 +262,27 @@ can_gas_fit |>
   augment() |>
   features(.innov, ljung_box, lag = 24)
 # The Ljung-Box p-value is less than 0.05. Therefore we reject the null hypothesis that the residuals are white noise, indicating that there is some autocorrelation in the residuals. This makes sense because the model does not account for the non-linear growth trends in the data. We also see this visually in the ACF graph where there is significant autocorrelation through the 24th lag.
+
+# Part 5
+gas_cv_fc <- can_gas |>
+  select(Month, Volume) |>
+  stretch_tsibble(.init = 240, .step = 1) |>
+  model(snaive = SNAIVE(Volume),
+        tslm   = TSLM(log(Volume) ~ trend() + season())) |>
+  forecast(h = 1)
+
+gas_cv_fc |>
+  accuracy(can_gas, measures = list(MAE = MAE, RMSE = RMSE))
+# The first prediction comes at point 241, which is in January of 1980. The last forecast prediction is in February of 2005 as that is the last point of the pseudo-out-of-sample period. The snaive model has an MAE of 0.562 and an RMSE of 0.702. The tslm model has an MAE of 4.01 and an RMSE of 4.36. Both metrics agree that the snaive model is a better fit for this data.
+# DM Test
+errs <- gas_cv_fc |>
+  as_tibble() |>
+  left_join(as_tibble(can_gas) |> select(Month, actual = Volume),
+            by = "Month") |>
+  mutate(e = actual - .mean) |>
+  select(Month, .model, e) |>
+  pivot_wider(names_from = .model, values_from = e) |>
+  na.omit()
+
+forecast::dm.test(errs$snaive, errs$tslm, h = 1, power = 1)
+# The DM test statistic is -31.278 with a p-value of <2.2e-16. Therefore at the 5% significance level, we reject the null hypothesis of homoskedasticity and conclude that the snaive model is significantly more accurate than the tslm model for this data.

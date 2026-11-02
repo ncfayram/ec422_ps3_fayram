@@ -170,3 +170,95 @@ retail_ts |>
 
 #The not seasonally adjusted series has significantly more variance and noise in its month-over-month growth rate. This is because those growth rates are greatly exacerbated by the seasonal swings so the the RSAFSNA picks that up, whereas the RSAFS series only accounts for the additional changes in growth rates by less influential factors. For this reason, the two series follow the same trend, but the spikes in the RSAFSNA data are much more pronounced.
 
+# Seasonals
+retail_ts |>
+  filter(series_id == "RSAFSNA") |>
+  gg_season(sales) +
+  labs(
+    title = "Seasonal Pattern in NSA Retail Sales",
+    y = "Millions of dollars"
+  ) +
+  theme_minimal()
+
+retail_ts |>
+  filter(series_id == "RSAFS") |>
+  gg_season(sales) +
+  labs(
+    title = "Seasonal Pattern in SA Retail Sales",
+    y = "Millions of dollars"
+  ) +
+  theme_minimal()
+# The seasonal pattern is very clear in the RSAFSNA data. Each line representing one year follows the same positive and negative slope trends for the most part as well as increasing gradually over the course of the year. The RSAFS data, however, has no clear seasonal pattern as each year follows a much more linear trend.
+
+can_gas |>
+  gg_season(log_volume) +
+  labs(
+    title = "Seasonal Pattern in Canadian Gasoline Production",
+    y = "Billions of Cubic Meters"
+  ) +
+  theme_minimal()
+# The seasonal pattern in the can_gas data is slightly U-shaped as opposed to the increasing trend with RSAFS. Gasoline production is higher in the winter months and hits a minimum around June/July. This makes sense with the idea that natural gas consumption would increase for heating purposes in the colder months and wouldn't be as necessary in the Summer.
+# Subseries
+can_gas |>
+  gg_subseries(log_volume) +
+  labs(
+    title = "Subseries Plot: Canadian Gas Production",
+    y = "log(Volume)"
+  )
+
+# X-13ARIMA-SEATS
+retail_nsa_x13 <- retail_ts |>
+  filter(series_id == "RSAFSNA") |>
+  model(x13 = X_13ARIMA_SEATS(sales)) |>
+  components()
+
+retail_nsa_x13 |> autoplot()
+# December seems to have the highest seasonal swing. Maxing out in 1993 around 22% above the trend, but staying consistently 10-20% above the trend for the duration of the series. The seasonal swings get slightly smaller over time.
+
+sa_compare <- retail_nsa_x13 |>
+  as_tibble() |>
+  select(Month, mine = season_adjust) |>
+  left_join(
+    retail_ts |>
+      filter(series_id == "RSAFS") |>
+      as_tibble() |>
+      transmute(Month, census = sales),
+    by = "Month"
+  ) |>
+  mutate(pct_diff = 100 * (log(mine) - log(census)))
+
+sa_compare |>
+  ggplot(aes(x = Month, y = pct_diff)) +
+  geom_line() +
+  labs(
+    title = "My X-13 Seasonal Adjustment Minus the Census Bureau's",
+    x = NULL, y = "Difference (%)"
+  ) +
+  theme_minimal()
+# My manual adjustment is largely within one percent of the official seasonal adjustment. The difference only exceeds that margin between 2020 and 2024 which makes sense because COVID-19 was a highly irregular event and therefore is likely to cause some significant estimation uncertainty.
+# Linear Trend w/ Seasonal Dummies
+can_gas_fit <- can_gas |>
+  model(TSLM(log_volume ~ trend() + season()))
+
+report(can_gas_fit)
+can_gas_fit |>
+  tidy() |>
+  select(term, estimate, std.error, statistic, p.value) |>
+  knitr::kable(digits = 3)
+# The average monthly growth rate for Canadian gasoline production is 0.004. June has the largest statistical effect on this with a t-statistic of -4.777.
+
+can_gas_fit |>
+  augment() |>
+  ggplot(aes(x = Month)) +
+  geom_line(aes(y = log_volume, color = "Actual")) +
+  geom_line(aes(y = .fitted, color = "Fitted")) +
+  labs(title = "Linear Trend + Seasonal Dummies Fit: Canadian Gas Production",
+       y = "log(Volume)", color = NULL) +
+  theme_minimal()
+# At first glance, the fitted values seem to do an okay job at predicting the actual values. At some point it seems to line up exactly. Where the fitted model falters though is when the overall growth trend is non linear. The growth rate is very high toward the beginning and slows very quickly for example. That is something this fitted model cannot account for. However the model does a great job at predicting the trend and seasonal swing between 1980 and 2000 where the overall trend is roughly linear.
+# Testing for white noise residuals
+can_gas_fit |> gg_tsresiduals()
+can_gas_fit |>
+  augment() |>
+  features(.innov, ljung_box, lag = 24)
+# The Ljung-Box p-value is less than 0.05. Therefore we reject the null hypothesis that the residuals are white noise, indicating that there is some autocorrelation in the residuals. This makes sense because the model does not account for the non-linear growth trends in the data. We also see this visually in the ACF graph where there is significant autocorrelation through the 24th lag.
